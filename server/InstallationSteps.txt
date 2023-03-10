@@ -1,0 +1,242 @@
+## After login to Remote Server Run Below commands step by step
+## Make sure to replace Below variables as per Your .env and projects 
+# HOST_NAME
+# IP_ADDRESS
+# SERVER_USER_NAME
+# DB_NAME
+# DB_USER
+# DB_PASSWORD
+# YOUR_DOMAIN
+# GIT_REPO_NAME --> Project name from Git Repo link
+# YOUR_GIT_REPO_LINK --> Git Repo link
+
+hostnamectl set-hostname HOST_NAME
+
+nano /etc/hosts
+
+# add below lines
+IP_ADDRES HOST_NAME
+
+# Adding user
+adduser SERVER_USER_NAME
+adduser SERVER_USER_NAME sudo
+
+exit
+
+# login back using below command, enter added user password
+ssh SERVER_USER_NAME@IP_ADDRESS
+
+mkdir -p ~/.ssh
+
+
+
+# KeyGeneration on Win10
+-----------------------------
+ssh-keygen -b 4096
+
+# "C:\Users\PC_USER_NAME/.ssh/" location to your remote server location using Filezilla.
+# Make sure id_rsa.pub will be replaced in .ssh directory if already exists.
+# When it confired, then generate HOST_NAME.ppk using "genputty" software for further remote server access.
+# copy transfered id_rsa.pub to "authorized_keys"
+scp ~/.ssh/id_rsa.pub SERVER_USER_NAME@IP_ADDRESS:~/.ssh/authorized_keys
+
+**save in " ~/.ssh/authorized_keys "
+
+rm .ssh/id_rsa.pub
+-----------------------------
+
+
+# For Linux/Ubuntu/Debian 
+# "~/.ssh/" location to your remote server location
+-----------------------------
+# Generate & Save ssh key respective HOST_NAME
+sudo ssh-keygen -b 4096
+
+sudo scp ~/.ssh/id_rsa.pub SERVER_USER_NAME@IP_ADDRESS:~/.ssh/authorized_keys
+# then enter passowrd to save
+-----------------------------
+
+
+sudo chmod 700 ~/.ssh/
+**enter password
+
+sudo chmod 600 ~/.ssh/*
+
+#IMP
+sudo apt update && sudo apt upgrade
+
+#I'm from india so I have selected 'Asia/Kolkata', enter as per your zone
+sudo timedatectl set-timezone 'Asia/Kolkata'
+
+exit
+
+# Now you can logi to remote server again using ssh key or without passowrd authentication
+ssh SERVER_USER_NAME@IP_ADDRES
+
+sudo nano /etc/ssh/sshd_config
+# enter password
+
+# find "AddressFamily any"
+# set to inet
+
+# find "PermitRootLogin yes"
+# set to "No"
+
+# find "PasswordAuthentication yes" 
+# set to "no"
+
+# Optional
+# find "ChallengeResponseAuthentication no" 
+# set to "yes"
+
+# press (ctrl+x) then y and hit Enter to save and exit
+
+sudo systemctl restart sshd
+
+
+
+# Install Nginx & Securing Linode Server Firewall rules
+----------------------------
+sudo apt install ufw
+sudo apt install nginx curl
+
+# After installing Nginx, the commands below will be helpful for Nginx service to always start up with the server boots.
+sudo systemctl stop nginx.service
+sudo systemctl start nginx.service
+sudo systemctl enable nginx.service
+
+# Configuring Firewall & Nginx Auto Restart
+sudo ufw app list
+
+sudo ufw default allow outgoing
+sudo ufw default deny incoming
+sudo ufw allow http/tcp
+sudo ufw allow ssh
+sudo ufw allow in "Nginx Full"
+sudo ufw allow "Nginx HTTP"
+sudo ufw allow "Nginx HTTPS"
+sudo ufw enable
+# enter "y"(yes)
+sudo ufw status
+
+# Nginx Automatic Restart After Boot
+sudo mkdir -p /etc/systemd/system/nginx.service.d/
+
+sudo nano /etc/systemd/system/nginx.service.d/restart.conf
+
+# In "restart.conf" Add the following lines in the file, 
+# which will make Nginx automatically try to restart in every 5 seconds, whenever Nginx stops/fails to start.
+[Service]
+Restart=always
+RestartSec=5s
+
+sudo systemctl daemon-reload
+----------------------------
+
+
+# Required Software Dependencies Setup
+----------------------------
+sudo apt update
+sudo apt install python3-pip python3-dev python3-venv libpq-dev
+sudo apt install postgresql postgresql-contrib
+sudo apt install supervisor
+sudo apt install redis
+----------------------------
+
+
+# Postgres Database Setup
+----------------------------
+# DB User, DB passowrd setup as per Django Projects .env provided
+# Create Two Database as DEV_DB, PROD_DB for each project
+sudo -u postgres psql
+
+CREATE DATABASE DB_NAME;
+
+CREATE USER DB_USER WITH PASSWORD 'DB_PASSWORD';
+
+ALTER ROLE DB_USER SET client_encoding TO 'utf8';
+ALTER ROLE DB_USER SET default_transaction_isolation TO 'read committed';
+ALTER ROLE DB_USER SET timezone TO 'UTC';
+
+# whenever you create new Database, you must assign DB_USER to DB_NAME
+GRANT ALL PRIVILEGES ON DATABASE DB_NAME TO DB_USER;
+
+\q
+----------------------------
+
+
+# Nginx Setup Projectwise
+----------------------------
+sudo nano /etc/nginx/nginx.conf
+
+# Add / update nginx.conf file, by provided in Server/Nginx/nginx.conf
+# Create new YOUR_DOMAIN.conf in /etc/nginx/sites-available/YOUR_DOMAIN.conf
+# Upadted / add YOUR_DOMAIN.conf by provided in Server/Nginx/YOUR_DOMAIN.conf
+# then run below command
+sudo ln -s /etc/nginx/sites-available/YOUR_DOMAIN.conf /etc/nginx/sites-enabled/
+
+sudo mkdir /home/SERVER_USER_NAME/webapps
+sudo mkdir /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN
+sudo mkdir /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN/backups
+sudo mkdir /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN/gunicorn
+sudo mkdir /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN/nginx
+sudo nano touch /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN//gunicorn/gunicorn.out.log
+sudo nano touch /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN//gunicorn/gunicorn.err.log
+sudo nano touch /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN//nginx/nginx.access.log
+sudo nano touch /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN/nginx/nginx.error.log
+sudo mkdir /var/www/YOUR_DOMAIN
+sudo mkdir /var/www/YOUR_DOMAIN/react_build
+sudo mkdir /var/www/YOUR_DOMAIN/staticfiles
+sudo mkdir /var/www/YOUR_DOMAIN/mediafiles
+
+sudo chown -R $USER:$USER webapps
+sudo chown -R $USER:$USER /var/www/YOUR_DOMAIN
+
+#  Optional
+sudo chmod -R 755 /var/www/YOUR_DOMAIN
+sudo chmod -R 755 /var/www/YOUR_DOMAIN/react_build
+sudo chmod -R 755 /var/www/YOUR_DOMAIN/staticfiles
+sudo chmod -R 755 /var/www/YOUR_DOMAIN/mediafiles
+
+cd /home/SERVER_USER_NAME/webapps/YOUR_DOMAIN
+
+# Clone projects Git Repo, 
+# It will generate respective Git Project Name as GIT_REPO_NAME
+sudo git clone YOUR_GIT_REPO_LINK
+
+# go to SERVER_USER_NAME directory
+python3 -m venv YOUR_DOMAIN_env
+
+# Activate YOUR_DOMAIN_env for Django project initial setup & startup
+source YOUR_DOMAIN_env/bin/activate
+
+cd GIT_REPO_NAME
+
+sudo nano .env
+
+# Copy .envexample or locally developed .env
+# Replace / update respective variables as per project requirements.
+# Note: DEV_PAHSE=dev ---> use dev for respective CI-CD setup.
+# Once App is ready for Production use DEV_PAHSE=prod for Production Build
+
+# upgrade pip
+pip install --upgrade pip
+
+# install django projects Dependencies
+pip install -r requirements.txt
+----------------------------
+
+# Supervisor Setup Projectwise
+----------------------------
+# Create new YOUR_DOMAIN.conf by below command
+sudo nano /etc/supervisor/conf.d/YOUR_DOMAIN.conf
+
+# Upadted / add YOUR_DOMAIN.conf by provided in Server/supervisor.conf
+# then run below commands 
+sudo supervisorctl reread
+sudo supervisorctl update
+----------------------------
+
+# then again run below commands
+sudo service supervisor restart
+sudo service nginx restart
